@@ -58,5 +58,5 @@ func main() {
 	signal.Notify(signalChan, os.Interrupt)
 	sig := <-signalChan
 
-	fmt.Printf("\nReceived signal (%v). Shutting down RabbitMQ server...\n", sig)
+	fmt.Printf("\nReceived signal (%v). Shutting down RabbitMQ client...\n", sig)
 }
