@@ -28,7 +28,7 @@ func main() {
 	}
 	defer rabbitChan.Close()
 
-	err = pubsub.PublishJSON[routing.PlayingState](
+	err = pubsub.PublishJSON(
 		rabbitChan,
 		routing.ExchangePerilDirect,
 		routing.PauseKey,
