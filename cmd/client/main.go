@@ -28,23 +28,27 @@ func main() {
 		log.Fatalf("Failed to retrieve username: %+v", err)
 	}
 
+	gs := gamelogic.NewGameState(username)
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		routing.PauseKey+"."+gs.GetUsername(),
+		routing.PauseKey,
+		pubsub.TransientSimpleQueue,
+		handlerPause(gs),
+	)
+
 	exchange := routing.ExchangePerilDirect
 	key := routing.PauseKey
 	queueName := fmt.Sprintf("%s.%s", key, username)
 
-	simpleQueue, err := pubsub.NewSimpleQueue(
-		queueName,
-		pubsub.TransientSimpleQueueType,
-	)
-	if err != nil {
-		log.Fatalf("Failed to create simpleQueue: %+v", err)
-	}
-
 	channel, queue, err := pubsub.DeclareAndBind(
 		conn,
 		exchange,
+		queueName,
 		key,
-		simpleQueue,
+		pubsub.TransientSimpleQueue,
 	)
 	if err != nil {
 		log.Fatalf("Failed to declare and bind queue: %+v", err)
@@ -52,8 +56,6 @@ func main() {
 	defer channel.Close()
 
 	fmt.Printf("Queue declared: %+v\n", queue)
-
-	gs := gamelogic.NewGameState(username)
 
 LOOP:
 	for {

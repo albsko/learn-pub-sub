@@ -46,6 +46,19 @@ func main() {
 
 	fmt.Println("Message published successfully")
 
+	_, queue, err := pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		"game_logs",
+		routing.GameLogSlug+".*",
+		pubsub.DurableSimpleQueue,
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare and bind game_logs queue: %+v", err)
+	}
+
+	fmt.Printf("Game logs queue declared: %+v\n", queue)
+
 	gamelogic.PrintServerHelp()
 
 LOOP:
