@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+	fmt.Println("Starting Peril server...")
+
 	connUrl := "amqp://guest:guest@localhost:5672/"
 
 	conn, err := amqp.Dial(connUrl)
@@ -47,5 +49,5 @@ func main() {
 	signal.Notify(signalChan, os.Interrupt)
 	sig := <-signalChan
 
-	fmt.Printf("\nReceived signal (%v). Shutting down RabbitMQ connection...\n", sig)
+	fmt.Printf("\nReceived signal (%v). Shutting down RabbitMQ server...\n", sig)
 }
