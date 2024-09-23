@@ -5,7 +5,9 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 
+	"github.com/albsko/learn-pub-sub/internal/gamelogic"
 	"github.com/albsko/learn-pub-sub/internal/pubsub"
 	"github.com/albsko/learn-pub-sub/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -43,6 +45,51 @@ func main() {
 	}
 
 	fmt.Println("Message published successfully")
+
+	gamelogic.PrintServerHelp()
+
+LOOP:
+	for {
+		words := gamelogic.GetInput()
+
+		if len(words) == 0 {
+			continue
+		}
+
+		switch words[0] {
+		case "pause":
+			log.Println("Server is sending pause message")
+			err = pubsub.PublishJSON(
+				rabbitChan,
+				routing.ExchangePerilDirect,
+				routing.PauseKey,
+				routing.PlayingState{
+					IsPaused: true,
+				},
+			)
+			if err != nil {
+				log.Printf("Failed to publish pause message: %+v", err)
+			}
+		case "resume":
+			log.Println("Server is sending resume message")
+			err = pubsub.PublishJSON(
+				rabbitChan,
+				routing.ExchangePerilDirect,
+				routing.PauseKey,
+				routing.PlayingState{
+					IsPaused: false,
+				},
+			)
+			if err != nil {
+				log.Printf("Failed to publish resume message: %+v", err)
+			}
+		case "quit":
+			log.Println("Exiting...")
+			break LOOP
+		default:
+			log.Printf("Don't understand the command: %s", strings.Join(words, " "))
+		}
+	}
 
 	// wait for ctrl+c
 	signalChan := make(chan os.Signal, 1)
