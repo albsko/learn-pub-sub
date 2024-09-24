@@ -26,14 +26,14 @@ func main() {
 
 	fmt.Printf("Connected to: %s\n", connUrl)
 
-	rabbitChan, err := conn.Channel()
+	rabbitCh, err := conn.Channel()
 	if err != nil {
 		log.Fatalf("Failed creating RabbitMQ Channel: %+v", err)
 	}
-	defer rabbitChan.Close()
+	defer rabbitCh.Close()
 
 	err = pubsub.PublishJSON(
-		rabbitChan,
+		rabbitCh,
 		routing.ExchangePerilDirect,
 		routing.PauseKey,
 		routing.PlayingState{
@@ -73,7 +73,7 @@ LOOP:
 		case "pause":
 			log.Println("Server is sending pause message")
 			err = pubsub.PublishJSON(
-				rabbitChan,
+				rabbitCh,
 				routing.ExchangePerilDirect,
 				routing.PauseKey,
 				routing.PlayingState{
@@ -86,7 +86,7 @@ LOOP:
 		case "resume":
 			log.Println("Server is sending resume message")
 			err = pubsub.PublishJSON(
-				rabbitChan,
+				rabbitCh,
 				routing.ExchangePerilDirect,
 				routing.PauseKey,
 				routing.PlayingState{

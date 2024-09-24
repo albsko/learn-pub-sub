@@ -22,12 +22,12 @@ func SubscribeJSON[T any](
 	simpleQueueType SimpleQueueType,
 	handler func(T),
 ) error {
-	rabbitChan, queue, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
+	rabbitCh, queue, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
 	if err != nil {
 		return fmt.Errorf("could not declare and bind queue: %v", err)
 	}
 
-	msgs, err := rabbitChan.Consume(
+	msgs, err := rabbitCh.Consume(
 		queue.Name, // queue
 		"",         // consumer
 		false,      // auto-ack
@@ -47,7 +47,7 @@ func SubscribeJSON[T any](
 	}
 
 	go func() {
-		defer rabbitChan.Close()
+		defer rabbitCh.Close()
 		for msg := range msgs {
 			target, err := unmarshaller(msg.Body)
 			if err != nil {
@@ -68,7 +68,7 @@ func DeclareAndBind(
 	key string,
 	simpleQueueType SimpleQueueType,
 ) (*amqp.Channel, amqp.Queue, error) {
-	rabbitChan, err := conn.Channel()
+	rabbitCh, err := conn.Channel()
 	if err != nil {
 		return nil, amqp.Queue{}, err
 	}
@@ -78,7 +78,7 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, err
 	}
 
-	queue, err := rabbitChan.QueueDeclare(
+	queue, err := rabbitCh.QueueDeclare(
 		sQ.name,
 		sQ.durable,
 		sQ.autoDelete,
@@ -90,7 +90,7 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, err
 	}
 
-	err = rabbitChan.QueueBind(
+	err = rabbitCh.QueueBind(
 		sQ.name,
 		key,
 		exchange,
@@ -101,7 +101,7 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, err
 	}
 
-	return rabbitChan, queue, nil
+	return rabbitCh, queue, nil
 }
 
 type simpleQueue struct {
