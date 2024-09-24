@@ -49,7 +49,7 @@ func main() {
 	_, queue, err := pubsub.DeclareAndBind(
 		conn,
 		routing.ExchangePerilTopic,
-		"game_logs",
+		routing.GameLogSlug,
 		routing.GameLogSlug+".*",
 		pubsub.DurableSimpleQueue,
 	)
