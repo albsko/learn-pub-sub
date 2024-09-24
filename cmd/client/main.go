@@ -19,16 +19,30 @@ func main() {
 
 	conn, err := amqp.Dial(connUrl)
 	if err != nil {
-		log.Fatalf("Failed dialing %s:%+v", connUrl, err)
+		log.Fatalf("failed dialing %s:%+v", connUrl, err)
 	}
 	defer conn.Close()
 
+	publishCh, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("failed creating channel: %+v", err)
+	}
+
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
-		log.Fatalf("Failed to retrieve username: %+v", err)
+		log.Fatalf("failed to retrieve username: %+v", err)
 	}
 
 	gs := gamelogic.NewGameState(username)
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+"."+gs.GetUsername(),
+		routing.ArmyMovesPrefix+".*",
+		pubsub.TransientSimpleQueue,
+		handlerMove(gs),
+	)
 
 	err = pubsub.SubscribeJSON(
 		conn,
@@ -51,7 +65,7 @@ func main() {
 		pubsub.TransientSimpleQueue,
 	)
 	if err != nil {
-		log.Fatalf("Failed to declare and bind queue: %+v", err)
+		log.Fatalf("failed to declare and bind queue: %+v", err)
 	}
 	defer channel.Close()
 
@@ -65,13 +79,23 @@ LOOP:
 		}
 		switch words[0] {
 		case "move":
-			_, err := gs.CommandMove(words)
+			mv, err := gs.CommandMove(words)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
 
-			// TODO: publish the move
+			err = pubsub.PublishJSON(
+				publishCh,
+				routing.ExchangePerilTopic,
+				routing.ArmyMovesPrefix+"."+mv.Player.Username,
+				mv,
+			)
+			if err != nil {
+				log.Printf("error: %+v\n", err)
+				continue
+			}
+			fmt.Printf("Moved %v units to %s\n", len(mv.Units), mv.ToLocation)
 		case "spawn":
 			err = gs.CommandSpawn(words)
 			if err != nil {
