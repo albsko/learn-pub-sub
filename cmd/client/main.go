@@ -41,8 +41,23 @@ func main() {
 		routing.ArmyMovesPrefix+"."+gs.GetUsername(),
 		routing.ArmyMovesPrefix+".*",
 		pubsub.TransientSimpleQueue,
-		handlerMove(gs),
+		handlerMove(gs, publishCh),
 	)
+	if err != nil {
+		log.Fatalf("could not subscribe to army moves: %v", err)
+	}
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.WarRecognitionsPrefix,
+		routing.WarRecognitionsPrefix+".*",
+		pubsub.DurableSimpleQueue,
+		handlerWar(gs),
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to war declarations: %v", err)
+	}
 
 	err = pubsub.SubscribeJSON(
 		conn,
@@ -52,24 +67,9 @@ func main() {
 		pubsub.TransientSimpleQueue,
 		handlerPause(gs),
 	)
-
-	exchange := routing.ExchangePerilDirect
-	key := routing.PauseKey
-	queueName := fmt.Sprintf("%s.%s", key, username)
-
-	channel, queue, err := pubsub.DeclareAndBind(
-		conn,
-		exchange,
-		queueName,
-		key,
-		pubsub.TransientSimpleQueue,
-	)
 	if err != nil {
-		log.Fatalf("failed to declare and bind queue: %+v", err)
+		log.Fatalf("could not subscribe to pause: %v", err)
 	}
-	defer channel.Close()
-
-	fmt.Printf("Queue declared: %+v\n", queue)
 
 LOOP:
 	for {

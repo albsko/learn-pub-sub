@@ -89,13 +89,17 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, fmt.Errorf("could not create channel: %v", err)
 	}
 
+	args := amqp.Table{
+		"x-dead-letter-exchange": "peril_dlx",
+	}
+
 	queue, err := rabbitCh.QueueDeclare(
 		queueName,                             // name
 		simpleQueueType == DurableSimpleQueue, // durable
 		simpleQueueType != DurableSimpleQueue, // delete when unused
 		simpleQueueType != DurableSimpleQueue, // exclusive
 		false,                                 // no-wait
-		nil,                                   // args
+		args,                                  // args
 	)
 	if err != nil {
 		return nil, amqp.Queue{}, fmt.Errorf("could not declare queue: %v", err)
