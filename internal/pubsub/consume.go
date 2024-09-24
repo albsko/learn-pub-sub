@@ -86,73 +86,30 @@ func DeclareAndBind(
 ) (*amqp.Channel, amqp.Queue, error) {
 	rabbitCh, err := conn.Channel()
 	if err != nil {
-		return nil, amqp.Queue{}, err
-	}
-
-	sQ, err := newSimpleQueue(queueName, simpleQueueType)
-	if err != nil {
-		return nil, amqp.Queue{}, err
+		return nil, amqp.Queue{}, fmt.Errorf("could not create channel: %v", err)
 	}
 
 	queue, err := rabbitCh.QueueDeclare(
-		sQ.name,
-		sQ.durable,
-		sQ.autoDelete,
-		sQ.exclusive,
-		sQ.noWait,
-		sQ.args,
+		queueName,                             // name
+		simpleQueueType == DurableSimpleQueue, // durable
+		simpleQueueType != DurableSimpleQueue, // delete when unused
+		simpleQueueType != DurableSimpleQueue, // exclusive
+		false,                                 // no-wait
+		nil,                                   // args
 	)
 	if err != nil {
-		return nil, amqp.Queue{}, err
+		return nil, amqp.Queue{}, fmt.Errorf("could not declare queue: %v", err)
 	}
 
 	err = rabbitCh.QueueBind(
-		sQ.name,
-		key,
-		exchange,
-		sQ.noWait,
-		sQ.args,
+		queue.Name, // queue name
+		key,        // routing key
+		exchange,   // exchange
+		false,      // no-wait
+		nil,        // args
 	)
 	if err != nil {
-		return nil, amqp.Queue{}, err
+		return nil, amqp.Queue{}, fmt.Errorf("could not bind queue: %v", err)
 	}
-
 	return rabbitCh, queue, nil
-}
-
-type simpleQueue struct {
-	name       string
-	durable    bool
-	autoDelete bool
-	exclusive  bool
-	noWait     bool
-	args       amqp.Table
-}
-
-func newSimpleQueue(
-	queueName string,
-	simpleQueueType SimpleQueueType,
-) (*simpleQueue, error) {
-	var durable, autoDelete, exclusive bool
-	switch simpleQueueType {
-	case DurableSimpleQueue:
-		durable = true
-		autoDelete = false
-		exclusive = false
-	case TransientSimpleQueue:
-		durable = false
-		autoDelete = true
-		exclusive = true
-	default:
-		return nil, fmt.Errorf("error creating SimpleQueue, wrong SimpleQueueType")
-	}
-
-	var noWait bool
-	var args amqp.Table
-	noWait = false
-	args = nil
-
-	return &simpleQueue{
-		queueName, durable, autoDelete, exclusive, noWait, args,
-	}, nil
 }
