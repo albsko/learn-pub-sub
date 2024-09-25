@@ -20,7 +20,7 @@ func main() {
 
 	conn, err := amqp.Dial(connUrl)
 	if err != nil {
-		log.Fatalf("Failed dialing %s:%+v", connUrl, err)
+		log.Fatalf("failed dialing %s:%+v", connUrl, err)
 	}
 	defer conn.Close()
 
@@ -28,7 +28,7 @@ func main() {
 
 	rabbitCh, err := conn.Channel()
 	if err != nil {
-		log.Fatalf("Failed creating RabbitMQ Channel: %+v", err)
+		log.Fatalf("failed creating RabbitMQ Channel: %+v", err)
 	}
 	defer rabbitCh.Close()
 
@@ -41,23 +41,32 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("Failed to publish message: %+v", err)
+		log.Fatalf("failed to publish message: %+v", err)
 	}
 
 	fmt.Println("Message published successfully")
 
-	_, queue, err := pubsub.DeclareAndBind(
+	err = pubsub.SubscribeGob(
 		conn,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
 		routing.GameLogSlug+".*",
 		pubsub.DurableSimpleQueue,
+		func(log routing.GameLog) pubsub.AckType {
+			defer gamelogic.PrintServerHelp()
+			err := gamelogic.WriteLog(log)
+			if err != nil {
+				fmt.Printf("error writing log: %v\n", err)
+				return pubsub.NackRequeue
+			}
+			return pubsub.Ack
+		},
 	)
 	if err != nil {
-		log.Fatalf("Failed to declare and bind game_logs queue: %+v", err)
+		log.Fatalf("failed to subscribe to game logs: %+v", err)
 	}
 
-	fmt.Printf("Game logs queue declared: %+v\n", queue)
+	fmt.Println("Subscribed to game logs queue")
 
 	gamelogic.PrintServerHelp()
 
@@ -81,7 +90,7 @@ LOOP:
 				},
 			)
 			if err != nil {
-				log.Printf("Failed to publish pause message: %+v", err)
+				log.Printf("failed to publish pause message: %+v", err)
 			}
 		case "resume":
 			log.Println("Server is sending resume message")
@@ -94,13 +103,13 @@ LOOP:
 				},
 			)
 			if err != nil {
-				log.Printf("Failed to publish resume message: %+v", err)
+				log.Printf("failed to publish resume message: %+v", err)
 			}
 		case "quit":
 			log.Println("Exiting...")
 			break LOOP
 		default:
-			log.Printf("Don't understand the command: %s", strings.Join(words, " "))
+			log.Printf("unknown command: %s", strings.Join(words, " "))
 		}
 	}
 
