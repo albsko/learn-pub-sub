@@ -37,6 +37,15 @@ func subscribe[T any](
 		return fmt.Errorf("could not declare and bind queue: %v", err)
 	}
 
+	err = rabbitCh.Qos(
+		10,    // prefetch count
+		0,     // prefetch size
+		false, // global
+	)
+	if err != nil {
+		return fmt.Errorf("could not set QoS: %v", err)
+	}
+
 	msgs, err := rabbitCh.Consume(
 		queue.Name, // queue
 		"",         // consumer
